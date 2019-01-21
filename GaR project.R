@@ -24,12 +24,12 @@ FCI_index <- read_excel("gfsr-financial-conditions-indices.xlsx", sheet = 2,
 
 FCI_col <- FCI_index %>%
   select(date, COL) %>%
-      mutate(Year = year(date), Quarter = quarter(date)) %>%
-        group_by(Year,Quarter) %>%
-          summarise(FCI_q = mean(COL)) %>%
-        ungroup() %>%
-            mutate(Date = seq(as.Date("1991/03/30"),as.Date("2016/09/30"),"quarter")) %>%
-          select(Date, FCI_q)
+  mutate(Year = year(date), Quarter = quarter(date)) %>%
+  group_by(Year,Quarter) %>%
+  summarise(FCI_q = mean(COL)) %>%
+  ungroup() %>%
+  mutate(Date = seq(as.Date("1991/03/30"),as.Date("2016/09/30"),"quarter")) %>%
+  select(Date, FCI_q)
 
 GDP_base <- c(1994,1994,2005, 2005)
 GDP_def <- c("current", "constant","current", "constant")
@@ -42,34 +42,55 @@ for (w in seq_along(GDP_file)) {
 }
 
 
+## Empalme series PIB de distinta base
 
-GDP_1994_current <-  current_1994 %>%
-  filter(`RAMAS DE ACTIVIDAD ECONOMICA` == "Producto Interno Bruto")  %>%
-  select(-c(`1994`,`1995`,`1996`,`1997`,`1998`,`1999`,`2000`,`2001`,
-            `2002`,`2003`,`2004`,`2005`,`2006`,`2007`,
-            `RAMAS DE ACTIVIDAD ECONOMICA`))%>%
-  t() %>% as.data.frame() %>%
-  rownames_to_column()%>%
-  mutate(Growth = V1/lag(V1,4) -1,
-         quarter = seq(as.Date("1994/03/30"),as.Date("2007/12/30"),"quarter")) %>%
-  rename(GDP_current = V1 , Year = rowname)
+time_period <- as.data.frame(seq(as.Date("1994/03/30"),as.Date("2017/12/30"), "quarter")) %>%
+  rename(date =`seq(as.Date("1994/03/30"), as.Date("2017/12/30"), "quarter")`)
 
-
-
-ggplot(data = FCI_col, aes(x = Date, y = FCI_q)) + 
-  geom_line( color = "#00AFBB") + 
-  ggtitle("Índice de condiciones financieras Colombia 1991-2016") +
-  theme_minimal() +stat_smooth( method = "loess")
-
-
-ggplot(data = GDP_1994_current[-(1:4),], aes(x = quarter, y = Growth)) +
-  geom_line() + ggtitle("Crecimiento del PIB Precios corrientes 1994 - 2007") +
-  theme_minimal() +stat_smooth( method = "loess")
-
-
-
-
-
-
-
-
+GDP_all_series <-time_period %>%
+  left_join(constant_1994 %>%
+              filter(`RAMAS DE ACTIVIDAD ECONOMICA` == "PRODUCTO INTERNO BRUTO") %>%
+              select(-c(`1994`,`1995`,`1996`,`1997`,`1998`,`1999`,`2000`,`2001`,
+                        `2002`,`2003`,`2004`,`2005`,`2006`,`2007`,
+                        `RAMAS DE ACTIVIDAD ECONOMICA`)) %>%
+              t() %>% as.data.frame() %>%
+              rownames_to_column()%>%
+              mutate(Growth_1994 = V1/lag(V1,4) -1,
+                     quarter_1994 = seq(as.Date("1994/03/30"),as.Date("2007/12/30"),"quarter")) %>%
+              rename(GDP_1994 = V1 , date = quarter_1994) %>%
+              select(-rowname)) %>%
+              left_join(constant_2005 %>%
+              filter(`RAMAS DE ACTIVIDAD ECONOMICA` == "PRODUCTO INTERNO BRUTO") %>%
+              select(-c(`2000`,`2001`,`2002`,`2003`,`2004`,`2005`,`2006`,`2007`,
+                        `2008`,`2009`,`2010`,`2011`, `2012`, `2013`, `2014`, `2015`,
+                        `2016`,`2017`,`RAMAS DE ACTIVIDAD ECONOMICA`)) %>%
+                t() %>% as.data.frame() %>%
+                rownames_to_column()%>%
+                mutate(Growth_2005 = V1/lag(V1,4) -1,
+                       quarter_2005 = seq(as.Date("2000/03/30"),as.Date("2017/12/30"),"quarter")) %>%
+                rename(GDP_2005 = V1 , date = quarter_2005) %>%
+                        select(-rowname)) %>%
+                  mutate(index_94 = GDP_1994/GDP_all_series[1,2],  
+                         index_05 = GDP_2005/GDP_all_series[45,4])
+            
+            
+            
+            
+              ggplot(data = FCI_col, aes(x = Date, y = FCI_q)) + 
+              geom_line( color = "#00AFBB") + 
+              ggtitle("Índice de condiciones financieras Colombia 1991-2016") +
+              theme_minimal() +stat_smooth( method = "loess")
+            
+            
+            ggplot(data = GDP_1994_current[-(1:4),], aes(x = quarter, y = Growth)) +
+              geom_line() + ggtitle("Crecimiento del PIB Precios corrientes 1994 - 2007") +
+              theme_minimal() +stat_smooth( method = "loess")
+            
+            
+            
+            
+            
+            
+            
+            
+            
